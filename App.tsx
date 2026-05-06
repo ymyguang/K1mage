@@ -1,14 +1,13 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { TRANSFORMATIONS, MODELS } from './constants';
-import { editImage, generateVideo, generateImageFromText, generateImageEditsBatch } from './services/geminiService';
-import type { GeneratedContent, Transformation } from './types';
+import { editImage, generateImage, generateImageByTemplate, generateVideo, getDefaultModel } from './services/apiClient';
+import type { GeneratedContent } from './types';
 import TransformationSelector from './components/TransformationSelector';
 import ResultDisplay from './components/ResultDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import ImageEditorCanvas from './components/ImageEditorCanvas';
-import { dataUrlToFile, embedWatermark, loadImage, resizeImageToMatch, downloadImage, addVisibleWatermark } from './utils/fileUtils';
+import { dataUrlToFile, loadImage, resizeImageToMatch, downloadImage } from './utils/fileUtils';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import MultiImageUploader from './components/MultiImageUploader';
 import HistoryPanel from './components/HistoryPanel';
@@ -17,34 +16,27 @@ import LanguageSwitcher from './components/LanguageSwitcher';
 import ThemeSwitcher from './components/ThemeSwitcher';
 import MultiImageGridUploader from './components/MultiImageGridUploader';
 
-type ActiveTool = 'mask' | 'none';
 type MobileView = 'input' | 'output';
+
+interface Template {
+  id: string;
+  name: string;
+  name_en: string;
+  description: string;
+  description_en: string;
+  emoji: string;
+  order: number;
+  click_count: number;
+  is_featured: boolean;
+  max_images: number;
+  is_custom: boolean;
+  tags: string[];
+  preview_url: string;
+}
 
 const App: React.FC = () => {
   const { t } = useTranslation();
-  const [transformations, setTransformations] = useState<Transformation[]>(() => {
-    try {
-      const savedOrder = localStorage.getItem('transformationOrder');
-      if (savedOrder) {
-        const orderedKeys = JSON.parse(savedOrder) as string[];
-        const transformationMap = new Map(TRANSFORMATIONS.map(t => [t.key, t]));
-        
-        const orderedTransformations = orderedKeys
-          .map(key => transformationMap.get(key))
-          .filter((t): t is Transformation => !!t);
-
-        const savedKeysSet = new Set(orderedKeys);
-        const newTransformations = TRANSFORMATIONS.filter(t => !savedKeysSet.has(t.key));
-        
-        return [...orderedTransformations, ...newTransformations];
-      }
-    } catch (e) {
-      console.error("Failed to load or parse transformation order from localStorage", e);
-    }
-    return TRANSFORMATIONS;
-  });
-
-  const [selectedTransformation, setSelectedTransformation] = useState<Transformation | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [primaryImageUrl, setPrimaryImageUrl] = useState<string | null>(null);
   const [primaryFile, setPrimaryFile] = useState<File | null>(null);
   const [secondaryImageUrl, setSecondaryImageUrl] = useState<string | null>(null);
@@ -54,28 +46,20 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const [maskDataUrl, setMaskDataUrl] = useState<string | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('16:9');
   const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4'>('1:1');
-  const [activeTool, setActiveTool] = useState<ActiveTool>('none');
   const [history, setHistory] = useState<GeneratedContent[]>([]);
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState<boolean>(false);
-  const [activeCategory, setActiveCategory] = useState<Transformation | null>(null);
   const [imageOptions, setImageOptions] = useState<string[] | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('input');
-  const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
+  const [defaultModel, setDefaultModel] = useState<string>('gemini/gemini-2.5-flash-image');
   
   useEffect(() => {
-    try {
-      const orderToSave = transformations.map(t => t.key);
-      localStorage.setItem('transformationOrder', JSON.stringify(orderToSave));
-    } catch (e) {
-      console.error("Failed to save transformation order to localStorage", e);
-    }
-  }, [transformations]);
+    getDefaultModel().then(model => setDefaultModel(model));
+  }, []);
   
   // Cleanup blob URLs on unmount or when dependencies change
   useEffect(() => {
@@ -91,39 +75,19 @@ const App: React.FC = () => {
     };
   }, [history, generatedContent]);
 
-  const ensureApiKey = async () => {
-    if (window.aistudio) {
-      const hasKey = await window.aistudio.hasSelectedApiKey();
-      if (!hasKey) {
-        await window.aistudio.openSelectKey();
-      }
-    }
-  };
-
-  const handleManualApiKeySelect = async () => {
-    if (window.aistudio) {
-        await window.aistudio.openSelectKey();
-    }
-  };
-
-  const handleSelectTransformation = (transformation: Transformation) => {
-    setSelectedTransformation(transformation);
+  const handleSelectTemplate = (template: Template) => {
+    setSelectedTemplate(template);
     setGeneratedContent(null);
     setError(null);
     setImageOptions(null);
     setSelectedOption(null);
     setMobileView('input');
-    if (transformation.prompt !== 'CUSTOM') {
+    if (!template.is_custom) {
       setCustomPrompt('');
     }
-    // If switching to a multi-image effect and a primary image exists from a previous step,
-    // automatically use it as the first image in the uploader.
-    if (transformation.maxImages && primaryImageUrl && multiImageUrls.length === 0) {
+    
+    if (template.max_images && primaryImageUrl && multiImageUrls.length === 0) {
         setMultiImageUrls([primaryImageUrl]);
-    }
-
-    if (transformation.isVideo) {
-        ensureApiKey();
     }
   };
 
@@ -132,8 +96,6 @@ const App: React.FC = () => {
     setPrimaryImageUrl(dataUrl);
     setGeneratedContent(null);
     setError(null);
-    setMaskDataUrl(null);
-    setActiveTool('none');
     setImageOptions(null);
     setSelectedOption(null);
   }, []);
@@ -151,8 +113,6 @@ const App: React.FC = () => {
     setMultiImageUrls([]);
     setGeneratedContent(null);
     setError(null);
-    setMaskDataUrl(null);
-    setActiveTool('none');
     setImageOptions(null);
     setSelectedOption(null);
   };
@@ -163,12 +123,11 @@ const App: React.FC = () => {
   };
   
   const handleGenerateDynamicVideo = useCallback(async () => {
-    if (!selectedTransformation || !selectedTransformation.videoPrompt || !selectedOption) {
+    if (!selectedTemplate || !selectedTemplate.videoPrompt || !selectedOption) {
       setError(t('app.error.selectOneToAnimate'));
       return;
     }
 
-    await ensureApiKey();
     setIsLoading(true);
     setError(null);
     setGeneratedContent(null);
@@ -181,7 +140,7 @@ const App: React.FC = () => {
         const imagePayload = { base64, mimeType };
 
         const videoDownloadUrl = await generateVideo(
-            selectedTransformation.videoPrompt,
+            selectedTemplate.videoPrompt,
             imagePayload,
             '9:16', // Changed from '1:1' as it's not supported for video
             (message) => setLoadingMessage(message)
@@ -202,19 +161,16 @@ const App: React.FC = () => {
         console.error(err);
         const errorMessage = err instanceof Error ? err.message : t('app.error.unknown');
         setError(errorMessage);
-        if (window.aistudio && (errorMessage.includes("requires a paid API key") || errorMessage.includes("PERMISSION_DENIED"))) {
-            window.aistudio.openSelectKey();
-        }
     } finally {
         setIsLoading(false);
         setLoadingMessage('');
         setSelectedOption(null);
     }
-  }, [selectedTransformation, selectedOption, t]);
+  }, [selectedTemplate, selectedOption, t]);
 
 
   const handleGenerateVideo = useCallback(async () => {
-    if (!selectedTransformation) return;
+    if (!selectedTemplate) return;
 
     const promptToUse = customPrompt;
     if (!promptToUse.trim()) {
@@ -222,7 +178,6 @@ const App: React.FC = () => {
         return;
     }
 
-    await ensureApiKey();
     setIsLoading(true);
     setError(null);
     setGeneratedContent(null);
@@ -264,37 +219,22 @@ const App: React.FC = () => {
         console.error(err);
         const errorMessage = err instanceof Error ? err.message : t('app.error.unknown');
         setError(errorMessage);
-        if (window.aistudio && (errorMessage.includes("requires a paid API key") || errorMessage.includes("PERMISSION_DENIED"))) {
-            window.aistudio.openSelectKey();
-        }
     } finally {
         setIsLoading(false);
         setLoadingMessage('');
     }
-  }, [selectedTransformation, customPrompt, primaryImageUrl, aspectRatio, t]);
+  }, [selectedTemplate, customPrompt, primaryImageUrl, aspectRatio, t]);
   
-  const applyWatermarks = useCallback(async (imageUrl: string | null) => {
-    if (!imageUrl) return null;
-    try {
-      const invisiblyWatermarked = await embedWatermark(imageUrl, "Nano Bananary｜ZHO");
-      const visiblyWatermarked = await addVisibleWatermark(invisiblyWatermarked, "Nano Bananary｜ZHO");
-      return visiblyWatermarked;
-    } catch (err) {
-      console.error("Failed to apply watermarks", err);
-      return imageUrl; // Return original image on any watermarking failure
-    }
-  }, []);
-
   const handleGenerateImage = useCallback(async () => {
-    const promptToUse = selectedTransformation?.prompt === 'CUSTOM' ? customPrompt : selectedTransformation?.prompt;
-
-    if (!selectedTransformation || !promptToUse?.trim()) {
+    if (!selectedTemplate) {
         setError(t('app.error.uploadAndSelect'));
         return;
     }
 
-    if (selectedModel === 'gemini-3-pro-image-preview') {
-        await ensureApiKey();
+    const isCustom = selectedTemplate.is_custom;
+    if (isCustom && !customPrompt.trim()) {
+        setError(t('app.error.enterPrompt'));
+        return;
     }
 
     setIsLoading(true);
@@ -304,135 +244,72 @@ const App: React.FC = () => {
     setMobileView('output');
 
     try {
-        if (selectedTransformation.isMultiStepVideo) {
-             if (multiImageUrls.length === 0) {
-                setError(t('app.error.uploadOne'));
-                setIsLoading(false);
-                return;
+        if (isCustom && !primaryImageUrl) {
+            const result = await generateImage(customPrompt, defaultModel, { aspectRatio: imageAspectRatio });
+            if (result.success && result.imageUrl) {
+                setGeneratedContent({ imageUrl: result.imageUrl, text: result.text });
+                setHistory(prev => [{ imageUrl: result.imageUrl, text: result.text }, ...prev]);
+            } else {
+                throw new Error(result.error || 'Failed to generate image');
             }
-            setLoadingMessage(t('app.loading.generatingOptions'));
-            const imageParts = multiImageUrls.map(url => ({
-                base64: url.split(',')[1],
-                mimeType: url.split(';')[0].split(':')[1] ?? 'image/png'
-            }));
-            const results = await generateImageEditsBatch(promptToUse, imageParts, selectedModel);
-            const watermarkedResults = await Promise.all(results.map(url => applyWatermarks(url)));
-            setImageOptions(watermarkedResults.filter((url): url is string => !!url));
-            setSelectedOption(null);
-            return;
-        }
-
-        // Text-to-image for custom prompt when no images are provided
-        if (selectedTransformation.key === 'customPrompt' && !primaryImageUrl) {
-            const result = await generateImageFromText(promptToUse, imageAspectRatio, selectedModel);
-            result.imageUrl = await applyWatermarks(result.imageUrl);
-            setGeneratedContent(result);
-            setHistory(prev => [result, ...prev]);
             return; 
         }
 
-        const maskBase64 = maskDataUrl ? maskDataUrl.split(',')[1] : null;
-
-        if (selectedTransformation.maxImages) {
-            if (multiImageUrls.length === 0) {
-                setError(t('app.error.uploadOne'));
-                setIsLoading(false);
-                return;
-            }
-            const imageParts = multiImageUrls.map(url => ({
-                base64: url.split(',')[1],
-                mimeType: url.split(';')[0].split(':')[1] ?? 'image/png'
-            }));
-            const result = await editImage(promptToUse, imageParts, null, selectedModel);
-            result.imageUrl = await applyWatermarks(result.imageUrl);
-            setGeneratedContent(result);
-            setHistory(prev => [result, ...prev]);
-
-        } else if (selectedTransformation.isTwoStep) {
-            if (!primaryImageUrl || !secondaryImageUrl) {
-                setError(t('app.error.uploadBoth'));
-                setIsLoading(false);
-                return;
-            }
-            setLoadingMessage(t('app.loading.step1'));
-            const primaryPart = [{ base64: primaryImageUrl.split(',')[1], mimeType: primaryImageUrl.split(';')[0].split(':')[1] ?? 'image/png' }];
-            const stepOneResult = await editImage(promptToUse, primaryPart, null, selectedModel);
-
-            if (!stepOneResult.imageUrl) throw new Error("Step 1 (line art) failed to generate an image.");
-            
-            stepOneResult.imageUrl = await applyWatermarks(stepOneResult.imageUrl);
-
-            setLoadingMessage(t('app.loading.step2'));
-            const stepOneImageBase64 = stepOneResult.imageUrl.split(',')[1];
-            const stepOneImageMimeType = stepOneResult.imageUrl.split(';')[0].split(':')[1] ?? 'image/png';
-            
-            const primaryImage = await loadImage(primaryImageUrl);
-            const resizedSecondaryImageUrl = await resizeImageToMatch(secondaryImageUrl, primaryImage);
-            
-            const stepTwoParts = [
-                { base64: stepOneImageBase64, mimeType: stepOneImageMimeType },
-                { base64: resizedSecondaryImageUrl.split(',')[1], mimeType: resizedSecondaryImageUrl.split(';')[0].split(':')[1] ?? 'image/png' }
-            ];
-            
-            const stepTwoResult = await editImage(selectedTransformation.stepTwoPrompt!, stepTwoParts, null, selectedModel);
-            
-            stepTwoResult.imageUrl = await applyWatermarks(stepTwoResult.imageUrl);
-
-            const finalResult = { ...stepTwoResult, secondaryImageUrl: stepOneResult.imageUrl };
-            setGeneratedContent(finalResult);
-            setHistory(prev => [finalResult, ...prev]);
-
-        } else {
-             if (!primaryImageUrl) {
-                setError(t('app.error.uploadAndSelect'));
-                setIsLoading(false);
-                return;
-             }
-             if (selectedTransformation.isMultiImage && !selectedTransformation.isSecondaryOptional && !secondaryImageUrl) {
-                setError(t('app.error.uploadBoth'));
-                setIsLoading(false);
-                return;
-             }
-
-            let imageParts = [{ 
+        if (primaryImageUrl) {
+            const imageParts = [{ 
                 base64: primaryImageUrl.split(',')[1], 
                 mimeType: primaryImageUrl.split(';')[0].split(':')[1] ?? 'image/png'
             }];
-            if (selectedTransformation.isMultiImage && secondaryImageUrl) {
+            
+            if (secondaryImageUrl) {
                 imageParts.push({
                     base64: secondaryImageUrl.split(',')[1],
                     mimeType: secondaryImageUrl.split(';')[0].split(':')[1] ?? 'image/png'
                 });
             }
 
-            setLoadingMessage(t('app.loading.default'));
-            const result = await editImage(promptToUse, imageParts, maskBase64, selectedModel);
-
-            result.imageUrl = await applyWatermarks(result.imageUrl);
-
-            setGeneratedContent(result);
-            setHistory(prev => [result, ...prev]);
+            const result = await generateImageByTemplate(
+                selectedTemplate.id,
+                defaultModel,
+                { 
+                    images: imageParts,
+                    customPrompt: isCustom ? customPrompt : undefined
+                }
+            );
+            
+            if (result.success && result.imageUrl) {
+                setGeneratedContent({ imageUrl: result.imageUrl, text: result.text });
+                setHistory(prev => [{ imageUrl: result.imageUrl, text: result.text }, ...prev]);
+            } else {
+                throw new Error(result.error || 'Failed to generate image');
+            }
+        } else {
+            const result = await generateImageByTemplate(
+                selectedTemplate.id,
+                defaultModel,
+                { customPrompt: isCustom ? customPrompt : undefined }
+            );
+            
+            if (result.success && result.imageUrl) {
+                setGeneratedContent({ imageUrl: result.imageUrl, text: result.text });
+                setHistory(prev => [{ imageUrl: result.imageUrl, text: result.text }, ...prev]);
+            } else {
+                throw new Error(result.error || 'Failed to generate image');
+            }
         }
     } catch (err) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : t('app.error.unknown');
       setError(errorMessage);
-      if (window.aistudio && (errorMessage.includes("requires a paid API key") || errorMessage.includes("PERMISSION_DENIED"))) {
-          window.aistudio.openSelectKey();
-      }
     } finally {
       setIsLoading(false);
       setLoadingMessage('');
     }
-  }, [primaryImageUrl, secondaryImageUrl, selectedTransformation, maskDataUrl, customPrompt, multiImageUrls, t, imageAspectRatio, applyWatermarks, selectedModel]);
+  }, [primaryImageUrl, secondaryImageUrl, selectedTemplate, customPrompt, multiImageUrls, t, imageAspectRatio, defaultModel]);
   
   const handleGenerate = useCallback(() => {
-    if (selectedTransformation?.isVideo) {
-      handleGenerateVideo();
-    } else {
-      handleGenerateImage();
-    }
-  }, [selectedTransformation, handleGenerateVideo, handleGenerateImage]);
+    handleGenerateImage();
+  }, [handleGenerateImage]);
 
 
   const handleUseImageAsInput = useCallback(async (imageUrl: string) => {
@@ -444,13 +321,10 @@ const App: React.FC = () => {
       setPrimaryImageUrl(imageUrl);
       setGeneratedContent(null);
       setError(null);
-      setMaskDataUrl(null);
-      setActiveTool('none');
       setSecondaryFile(null);
       setSecondaryImageUrl(null);
       setMultiImageUrls([imageUrl]);
-      setSelectedTransformation(null); 
-      setActiveCategory(null);
+      setSelectedTemplate(null); 
       setImageOptions(null);
       setSelectedOption(null);
       setMobileView('input');
@@ -474,14 +348,14 @@ const App: React.FC = () => {
   };
 
   const handleBackToSelection = () => {
-    setSelectedTransformation(null);
+    setSelectedTemplate(null);
     setImageOptions(null);
     setSelectedOption(null);
     setMobileView('input');
   };
 
   const handleResetApp = () => {
-    setSelectedTransformation(null);
+    setSelectedTemplate(null);
     setPrimaryImageUrl(null);
     setPrimaryFile(null);
     setSecondaryImageUrl(null);
@@ -493,7 +367,6 @@ const App: React.FC = () => {
     setMaskDataUrl(null);
     setCustomPrompt('');
     setActiveTool('none');
-    setActiveCategory(null);
     setImageOptions(null);
     setSelectedOption(null);
     setMobileView('input');
@@ -502,74 +375,42 @@ const App: React.FC = () => {
   const handleOpenPreview = (url: string) => setPreviewImageUrl(url);
   const handleClosePreview = () => setPreviewImageUrl(null);
   
-  const toggleMaskTool = () => {
-    setActiveTool(current => (current === 'mask' ? 'none' : 'mask'));
-  };
-  
-  const isCustomPromptEmpty = selectedTransformation?.prompt === 'CUSTOM' && !customPrompt.trim();
+  const isCustomPromptEmpty = selectedTemplate?.is_custom && !customPrompt.trim();
   
   let isGenerateDisabled = true;
-    if (selectedTransformation) {
-        if (selectedTransformation.key === 'customPrompt') {
+    if (selectedTemplate) {
+        if (selectedTemplate.is_custom) {
             isGenerateDisabled = isLoading || isCustomPromptEmpty;
-        } else if (selectedTransformation.isVideo) {
-            isGenerateDisabled = isLoading || !customPrompt.trim();
-        } else if (selectedTransformation.maxImages) {
+        } else if (selectedTemplate.max_images) {
             isGenerateDisabled = isLoading || multiImageUrls.length === 0;
         } else {
-            let imagesReady = false;
-            if (selectedTransformation.isMultiImage) {
-                if (selectedTransformation.isSecondaryOptional) {
-                    imagesReady = !!primaryImageUrl;
-                } else {
-                    imagesReady = !!primaryImageUrl && !!secondaryImageUrl;
-                }
-            } else {
-                imagesReady = !!primaryImageUrl;
-            }
-            isGenerateDisabled = isLoading || isCustomPromptEmpty || !imagesReady;
+            isGenerateDisabled = isLoading;
         }
     }
 
   const renderInputUI = () => {
-    if (!selectedTransformation) return null;
+    if (!selectedTemplate) return null;
 
-    if (selectedTransformation.maxImages) {
+    if (selectedTemplate.max_images && selectedTemplate.max_images > 1) {
         return (
             <MultiImageGridUploader
                 imageUrls={multiImageUrls}
                 onImagesChange={setMultiImageUrls}
-                maxImages={selectedTransformation.maxImages}
+                maxImages={selectedTemplate.max_images}
             />
         );
     }
 
-    if (selectedTransformation.isVideo) {
+    if (selectedTemplate.is_custom) {
       return (
         <>
           <textarea
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder={t('transformations.video.promptPlaceholder')}
+            placeholder={t('transformations.effects.customPrompt.promptPlaceholder')}
             rows={4}
             className="w-full mt-2 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] transition-colors placeholder-[var(--text-tertiary)]"
           />
-          <div className="mt-4">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">{t('transformations.video.aspectRatio')}</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {(['16:9', '9:16'] as const).map(ratio => (
-                <button
-                  key={ratio}
-                  onClick={() => setAspectRatio(ratio)}
-                  className={`py-2 px-3 text-sm font-semibold rounded-md transition-colors duration-200 ${
-                    aspectRatio === ratio ? 'bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[var(--text-on-accent)]' : 'bg-[rgba(107,114,128,0.2)] hover:bg-[rgba(107,114,128,0.4)]'
-                  }`}
-                >
-                  {t(ratio === '16:9' ? 'transformations.video.landscape' : 'transformations.video.portrait')}
-                </button>
-              ))}
-            </div>
-          </div>
           <div className="mt-4">
              <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">{t('transformations.effects.customPrompt.uploader2Title')}</h3>
             <ImageEditorCanvas
@@ -584,46 +425,14 @@ const App: React.FC = () => {
       );
     }
 
-    if (selectedTransformation.isMultiImage) {
-      return (
-        <MultiImageUploader
-          onPrimarySelect={handlePrimaryImageSelect}
-          onSecondarySelect={handleSecondaryImageSelect}
-          primaryImageUrl={primaryImageUrl}
-          secondaryImageUrl={secondaryImageUrl}
-          onClearPrimary={handleClearPrimaryImage}
-          onClearSecondary={handleClearSecondaryImage}
-          primaryTitle={selectedTransformation.primaryUploaderTitle ? t(selectedTransformation.primaryUploaderTitle) : undefined}
-          primaryDescription={selectedTransformation.primaryUploaderDescription ? t(selectedTransformation.primaryUploaderDescription) : undefined}
-          secondaryTitle={selectedTransformation.secondaryUploaderTitle ? t(selectedTransformation.secondaryUploaderTitle) : undefined}
-          secondaryDescription={selectedTransformation.secondaryUploaderDescription ? t(selectedTransformation.secondaryUploaderDescription) : undefined}
-        />
-      );
-    }
-
     return (
-      <>
-        <ImageEditorCanvas
-          onImageSelect={handlePrimaryImageSelect}
-          initialImageUrl={primaryImageUrl}
-          onMaskChange={setMaskDataUrl}
-          onClearImage={handleClearPrimaryImage}
-          isMaskToolActive={activeTool === 'mask'}
-        />
-        {primaryImageUrl && (
-          <div className="mt-4">
-            <button
-              onClick={toggleMaskTool}
-              className={`w-full flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors duration-200 ${
-                activeTool === 'mask' ? 'bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[var(--text-on-accent)]' : 'bg-[rgba(107,114,128,0.2)] hover:bg-[rgba(107,114,128,0.4)]'
-              }`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg>
-              <span>{t('imageEditor.drawMask')}</span>
-            </button>
-          </div>
-        )}
-      </>
+      <ImageEditorCanvas
+        onImageSelect={handlePrimaryImageSelect}
+        initialImageUrl={primaryImageUrl}
+        onMaskChange={() => {}}
+        onClearImage={handleClearPrimaryImage}
+        isMaskToolActive={false}
+      />
     );
   };
 
@@ -640,16 +449,6 @@ const App: React.FC = () => {
           </h1>
           <div className="flex items-center gap-2 md:gap-4">
              <button
-              onClick={handleManualApiKeySelect}
-              className="flex items-center gap-1 h-10 px-3 text-sm font-semibold text-[var(--text-primary)] bg-[rgba(107,114,128,0.2)] rounded-full hover:bg-[rgba(107,114,128,0.4)] transition-colors duration-200"
-              title="Change API Key"
-            >
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 000-2z" clipRule="evenodd" />
-               </svg>
-               <span className="hidden sm:inline">{t('app.apiKey')}</span>
-            </button>
-            <button
               onClick={toggleHistoryPanel}
               className="flex items-center justify-center w-10 h-10 text-sm font-semibold text-[var(--text-primary)] bg-[rgba(107,114,128,0.2)] rounded-full hover:bg-[rgba(107,114,128,0.4)] transition-colors duration-200"
               aria-label={t('app.history')}
@@ -665,14 +464,10 @@ const App: React.FC = () => {
       </header>
 
       <main>
-        {!selectedTransformation ? (
+        {!selectedTemplate ? (
           <TransformationSelector 
-            transformations={transformations} 
-            onSelect={handleSelectTransformation} 
+            onSelect={handleSelectTemplate} 
             hasPreviousResult={!!primaryImageUrl || multiImageUrls.length > 0}
-            onOrderChange={setTransformations}
-            activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
           />
         ) : (
           <div className="container mx-auto p-4 md:p-8 animate-fade-in">
@@ -694,17 +489,13 @@ const App: React.FC = () => {
                 <div>
                   <div className="mb-4">
                     <h2 className="text-lg md:text-xl font-semibold mb-1 text-[var(--accent-primary)] flex items-center gap-3">
-                      <span className="text-3xl">{selectedTransformation.emoji}</span>
-                      {t(selectedTransformation.titleKey)}
+                      <span className="text-3xl">{selectedTemplate.emoji}</span>
+                      {selectedTemplate.name}
                     </h2>
-                    {selectedTransformation.prompt !== 'CUSTOM' ? (
-                       <p className="text-[var(--text-secondary)]">{t(selectedTransformation.descriptionKey)}</p>
-                    ) : (
-                      !selectedTransformation.isVideo && <p className="text-[var(--text-secondary)]">{t(selectedTransformation.descriptionKey)}</p>
-                    )}
+                    <p className="text-[var(--text-secondary)]">{selectedTemplate.description}</p>
                   </div>
                   
-                  {selectedTransformation.prompt === 'CUSTOM' && !selectedTransformation.isVideo && (
+                  {selectedTemplate.is_custom && (
                      <>
                         <textarea
                             value={customPrompt}
@@ -713,7 +504,7 @@ const App: React.FC = () => {
                             rows={3}
                             className="w-full -mt-2 mb-4 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] transition-colors placeholder-[var(--text-tertiary)]"
                         />
-                         {!primaryImageUrl && (
+                        {!primaryImageUrl && (
                             <div className="mb-4 animate-fade-in-fast">
                                 <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">{t('app.aspectRatio')}</h3>
                                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
@@ -736,37 +527,6 @@ const App: React.FC = () => {
                   
                   {renderInputUI()}
                   
-                   {/* Model Selection */}
-                   {!selectedTransformation.isVideo && (
-                     <div className="mt-6">
-                        <div className="flex p-1 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] relative">
-                            {MODELS.map((model) => (
-                                <button
-                                    key={model.id}
-                                    onClick={() => {
-                                        setSelectedModel(model.id);
-                                        if (model.id === 'gemini-3-pro-image-preview') {
-                                            ensureApiKey();
-                                        }
-                                    }}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-md transition-all duration-200 z-10 relative ${
-                                        selectedModel === model.id 
-                                            ? 'text-[var(--text-on-accent)] shadow-sm' 
-                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                                    }`}
-                                >
-                                    {selectedModel === model.id && (
-                                        <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] rounded-md z-[-1]" />
-                                    )}
-                                    <span>{t(model.nameKey)}</span>
-                                    {/* Optional Badge */}
-                                    {/* <span className={`text-[10px] px-1.5 rounded-full ${selectedModel === model.id ? 'bg-white/20 text-white' : 'bg-[var(--bg-primary)] text-[var(--text-tertiary)]'}`}>{model.badge}</span> */}
-                                </button>
-                            ))}
-                        </div>
-                     </div>
-                   )}
-
                    <button
                     onClick={handleGenerate}
                     disabled={isGenerateDisabled}

@@ -18,7 +18,8 @@ export default {
     createVideo: "创建视频",
     models: {
       nanoBanana: "Nano Banana (标准版)",
-      nanoBananaPro: "Nano Banana Pro (专业版)"
+      nanoBananaPro: "Nano Banana Pro (专业版)",
+      dmfoxGptImage2: "DMFox GPT Image 2"
     },
     error: {
       uploadAndSelect: "请上传图像并选择一个效果。",

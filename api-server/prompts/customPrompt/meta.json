@@ -1,0 +1,15 @@
+{
+  "id": "customPrompt",
+  "name": "自定义提示词",
+  "name_en": "Custom Prompt",
+  "description": "输入你自己的提示词来生成图片",
+  "description_en": "Enter your own prompt to generate images",
+  "emoji": "✍️",
+  "order": 110,
+  "click_count": 0,
+  "is_active": true,
+  "is_featured": true,
+  "max_images": 4,
+  "is_custom": true,
+  "tags": ["custom", "flexible"]
+}

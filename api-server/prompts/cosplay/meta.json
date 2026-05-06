@@ -1,0 +1,14 @@
+{
+  "id": "cosplay",
+  "name": "Cosplay",
+  "name_en": "Cosplay",
+  "description": "将插画角色转化为真实Cosplay照片",
+  "description_en": "Transform illustration character into realistic cosplay photo",
+  "emoji": "🎭",
+  "order": 80,
+  "click_count": 0,
+  "is_active": true,
+  "is_featured": false,
+  "max_images": 1,
+  "tags": ["cosplay", "anime", "illustration"]
+}
