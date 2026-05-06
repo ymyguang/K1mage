@@ -1,124 +1,150 @@
-import React, { useRef, useState } from 'react';
-import type { Transformation } from '../types';
+import React, { useState, useEffect } from 'react';
+import { getTemplates, getTemplatePreviewUrl } from '../services/apiClient';
 import { useTranslation } from '../i18n/context';
 
+interface Template {
+  id: string;
+  name: string;
+  name_en: string;
+  description: string;
+  description_en: string;
+  emoji: string;
+  order: number;
+  click_count: number;
+  is_featured: boolean;
+  max_images: number;
+  is_custom: boolean;
+  tags: string[];
+  preview_url: string;
+}
+
 interface TransformationSelectorProps {
-  transformations: Transformation[];
-  onSelect: (transformation: Transformation) => void;
+  onSelect: (template: Template) => void;
   hasPreviousResult: boolean;
-  onOrderChange: (newOrder: Transformation[]) => void;
-  activeCategory: Transformation | null;
-  setActiveCategory: (category: Transformation | null) => void;
 }
 
 const TransformationSelector: React.FC<TransformationSelectorProps> = ({ 
-  transformations, 
   onSelect, 
-  hasPreviousResult, 
-  onOrderChange, 
-  activeCategory, 
-  setActiveCategory 
+  hasPreviousResult 
 }) => {
-  const { t } = useTranslation();
-  const dragItemIndex = useRef<number | null>(null);
-  const dragOverItemIndex = useRef<number | null>(null);
-  const [dragging, setDragging] = useState(false);
+  const { t, language } = useTranslation();
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDragStart = (e: React.DragEvent<HTMLButtonElement>, index: number) => {
-    dragItemIndex.current = index;
-    setDragging(true);
-    const target = e.currentTarget;
-    setTimeout(() => {
-      target.classList.add('opacity-40', 'scale-95');
-    }, 0);
-  };
+  useEffect(() => {
+    loadTemplates();
+  }, []);
 
-  const handleDragEnter = (e: React.DragEvent<HTMLButtonElement>, index: number) => {
-    dragOverItemIndex.current = index;
-  };
-
-  const handleDragEnd = (e: React.DragEvent<HTMLButtonElement>) => {
-    setDragging(false);
-    e.currentTarget.classList.remove('opacity-40', 'scale-95');
-
-    if (dragItemIndex.current !== null && dragOverItemIndex.current !== null && dragItemIndex.current !== dragOverItemIndex.current) {
-      const newTransformations = [...transformations];
-      const draggedItemContent = newTransformations.splice(dragItemIndex.current, 1)[0];
-      newTransformations.splice(dragOverItemIndex.current, 0, draggedItemContent);
-      onOrderChange(newTransformations);
-    }
-    
-    dragItemIndex.current = null;
-    dragOverItemIndex.current = null;
-  };
-  
-  const handleDragOver = (e: React.DragEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-  };
-  
-  const handleItemClick = (item: Transformation) => {
-    if (item.items && item.items.length > 0) {
-      setActiveCategory(item);
-    } else {
-      onSelect(item);
+  const loadTemplates = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getTemplates({ sort: 'order', active_only: true });
+      if (response.success) {
+        setTemplates(response.templates);
+      } else {
+        setError('Failed to load templates');
+      }
+    } catch (err) {
+      console.error('Error loading templates:', err);
+      setError('Failed to load templates');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const renderGrid = (items: Transformation[]) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
-      {items.map((trans, index) => (
-        <button
-          key={trans.key}
-          draggable={!activeCategory} // Only allow dragging categories
-          onDragStart={(e) => !activeCategory && handleDragStart(e, index)}
-          onDragEnter={(e) => !activeCategory && handleDragEnter(e, index)}
-          onDragEnd={!activeCategory && handleDragEnd}
-          onDragOver={!activeCategory && handleDragOver}
-          onClick={() => handleItemClick(trans)}
-          className={`group flex flex-col items-center justify-center text-center p-4 aspect-square bg-[var(--bg-card)] rounded-xl border border-[var(--border-primary)] hover:border-[var(--accent-primary)] transition-all duration-200 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)] focus:ring-[var(--accent-primary)] ${
-            !activeCategory ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
-          } ${dragging && !activeCategory ? 'border-dashed' : ''}`}
-        >
-          <span className="text-4xl mb-2 transition-transform duration-200 group-hover:scale-110">{trans.emoji}</span>
-          <span className="font-semibold text-sm text-[var(--text-primary)]">{t(trans.titleKey)}</span>
-        </button>
-      ))}
-    </div>
-  );
+  const getTemplateName = (template: Template) => {
+    return language === 'en' ? template.name_en : template.name;
+  };
+
+  const getTemplateDescription = (template: Template) => {
+    return language === 'en' ? template.description_en : template.description;
+  };
+
+  const handleTemplateClick = (template: Template) => {
+    onSelect(template);
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-4 md:p-8 animate-fade-in">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <svg className="animate-spin h-8 w-8 mx-auto mb-4 text-[var(--accent-primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-[var(--text-secondary)]">Loading templates...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-4 md:p-8 animate-fade-in">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button 
+              onClick={loadTemplates}
+              className="px-4 py-2 bg-[var(--accent-primary)] text-white rounded-lg hover:bg-[var(--accent-primary-hover)]"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-8 animate-fade-in">
-      {!activeCategory ? (
-        <>
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4 text-[var(--accent-primary)]">{t('transformationSelector.title')}</h2>
-          <p className="text-base sm:text-lg text-center text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
-            {hasPreviousResult 
-              ? t('transformationSelector.descriptionWithResult')
-              : t('transformationSelector.description')
-            }
-          </p>
-          {renderGrid(transformations)}
-        </>
-      ) : (
-        <div>
-          <div className="mb-8 flex items-center gap-4">
-            <button
-              onClick={() => setActiveCategory(null)}
-              className="flex items-center gap-2 text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)] transition-colors duration-200 py-2 px-4 rounded-lg hover:bg-[rgba(107,114,128,0.1)]"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              {t('app.back')}
-            </button>
-            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] flex items-center gap-3">
-              <span className="text-4xl">{activeCategory.emoji}</span>
-              {t(activeCategory.titleKey)}
-            </h2>
-          </div>
-          {renderGrid(activeCategory.items || [])}
-        </div>
-      )}
+      <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4 text-[var(--accent-primary)]">
+        {t('transformationSelector.title')}
+      </h2>
+      <p className="text-base sm:text-lg text-center text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
+        {hasPreviousResult 
+          ? t('transformationSelector.descriptionWithResult')
+          : t('transformationSelector.description')
+        }
+      </p>
+      
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+        {templates.map((template) => (
+          <button
+            key={template.id}
+            onClick={() => handleTemplateClick(template)}
+            className="group flex flex-col items-center justify-center text-center p-4 aspect-square bg-[var(--bg-card)] rounded-xl border border-[var(--border-primary)] hover:border-[var(--accent-primary)] transition-all duration-200 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)] focus:ring-[var(--accent-primary)] cursor-pointer overflow-hidden relative"
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            
+            <img 
+              src={getTemplatePreviewUrl(template.id)} 
+              alt={getTemplateName(template)}
+              className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity duration-200"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            
+            <span className="text-4xl mb-2 transition-transform duration-200 group-hover:scale-110 relative z-10">
+              {template.emoji}
+            </span>
+            <span className="font-semibold text-sm text-[var(--text-primary)] relative z-10">
+              {getTemplateName(template)}
+            </span>
+            
+            {template.is_featured && (
+              <span className="absolute top-2 right-2 text-xs bg-[var(--accent-primary)] text-white px-2 py-1 rounded-full">
+                ★
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

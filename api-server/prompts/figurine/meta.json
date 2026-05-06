@@ -1,0 +1,14 @@
+{
+  "id": "figurine",
+  "name": "手办化",
+  "name_en": "Character Figure",
+  "description": "将照片转化为3D手办效果，包含包装盒和展示底座",
+  "description_en": "Transform photo into 3D character figure with packaging box and display base",
+  "emoji": "🧍",
+  "order": 90,
+  "click_count": 0,
+  "is_active": true,
+  "is_featured": false,
+  "max_images": 1,
+  "tags": ["3d", "figure", "collectible"]
+}

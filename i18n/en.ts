@@ -18,7 +18,8 @@ export default {
     createVideo: "Create Video",
     models: {
       nanoBanana: "Nano Banana",
-      nanoBananaPro: "Nano Banana Pro"
+      nanoBananaPro: "Nano Banana Pro",
+      dmfoxGptImage2: "DMFox GPT Image 2"
     },
     error: {
       uploadAndSelect: "Please upload an image and select an effect.",

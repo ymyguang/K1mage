@@ -5,8 +5,14 @@
 import type { Transformation } from './types';
 
 export const MODELS = [
-  { id: 'gemini-2.5-flash-image', nameKey: 'app.models.nanoBanana', badge: 'Fast' },
-  { id: 'gemini-3-pro-image-preview', nameKey: 'app.models.nanoBananaPro', badge: 'Pro' },
+  { id: 'dmfox/gpt-image-2', nameKey: 'app.models.dmfoxGptImage2', badge: 'DMFox', provider: 'DMFox' },
+  { id: 'gemini/gemini-2.5-flash-image', nameKey: 'app.models.geminiFlash', badge: 'Fast', provider: 'Google Gemini' },
+  { id: 'gemini/gemini-3-pro-image-preview', nameKey: 'app.models.geminiPro', badge: 'Pro', provider: 'Google Gemini' },
+  { id: 'openai/gpt-image-2', nameKey: 'app.models.gptImage2', badge: 'Latest', provider: 'OpenAI' },
+  { id: 'openai/dall-e-3', nameKey: 'app.models.dallE3', badge: 'Classic', provider: 'OpenAI' },
+  { id: 'openai/dall-e-2', nameKey: 'app.models.dallE2', badge: 'Legacy', provider: 'OpenAI' },
+  { id: 'tongyi/wanx-v2.6', nameKey: 'app.models.tongyiV26', badge: '增强', provider: '通义万相' },
+  { id: 'tongyi/wanx-v1', nameKey: 'app.models.tongyiV1', badge: '基础', provider: '通义万相' },
 ];
 
 export const TRANSFORMATIONS: Transformation[] = [

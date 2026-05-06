@@ -1,0 +1,6 @@
+{
+  "recommendations": [
+    "yoavbls.pretty-ts-errors",
+    "johnsoncodehk.vscode-tsconfig-helper"
+  ]
+}

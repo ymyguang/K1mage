@@ -1,0 +1,18 @@
+{
+  "id": "polaroid",
+  "name": "拍立得合照",
+  "name_en": "Polaroid Photo",
+  "description": "生成一张亲密合照的拍立得照片，带有模糊效果和闪光灯质感",
+  "description_en": "Generate an intimate polaroid photo with blur effect and flash photography aesthetic",
+  "emoji": "🎞️",
+  "order": 100,
+  "click_count": 2,
+  "is_active": true,
+  "is_featured": true,
+  "max_images": 4,
+  "tags": [
+    "photo",
+    "retro",
+    "fun"
+  ]
+}
