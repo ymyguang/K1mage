@@ -1,0 +1,55 @@
+<navigation-bar title="生成记录" color="#776587" background="#FFFFFF"></navigation-bar>
+<scroll-view class="scrollarea" scroll-y type="list">
+  <view class="page-shell">
+    <view class="back-button" bindtap="goBack">
+      <text class="back-arrow">‹</text>
+      <text>返回</text>
+    </view>
+
+    <view class="summary-card">
+      <view>
+        <view class="summary-label">当前积分</view>
+        <view class="summary-points">{{user ? (user.points || 0) : '-'}}</view>
+      </view>
+      <view class="summary-count">{{records.length}} 条记录</view>
+    </view>
+
+    <view class="error-card" wx:if="{{errorMessage}}">
+      {{errorMessage}}
+    </view>
+
+    <view wx:if="{{isLoading}}" class="empty-card">加载中...</view>
+
+    <view wx:elif="{{records.length === 0}}" class="empty-card">
+      <view class="empty-title">暂无生成记录</view>
+      <view class="empty-copy">完成一次生成后，记录会出现在这里。</view>
+    </view>
+
+    <view wx:else class="record-list">
+      <view wx:for="{{records}}" wx:key="id" class="record-card" data-id="{{item.id}}" bindtap="openRecordDetail">
+        <image
+          wx:if="{{item.displayUrl && item.status === 'success'}}"
+          class="record-image"
+          src="{{item.displayUrl}}"
+          mode="aspectFill"
+        ></image>
+        <view wx:else class="record-placeholder">{{item.statusLabel}}</view>
+
+        <view class="record-body">
+          <view class="record-top">
+            <text class="record-template">{{item.template_id || '自由创作'}}</text>
+            <text class="record-status status-{{item.status}}">{{item.statusLabel}}</text>
+          </view>
+          <view class="record-meta">{{item.model}}</view>
+          <view class="record-meta">{{item.timeLabel}}</view>
+          <view class="record-bottom">
+            <text>消耗 {{item.cost_points}} 积分</text>
+            <text wx:if="{{item.input_images_count}}">{{item.input_images_count}} 张图</text>
+          </view>
+          <view wx:if="{{item.error_message}}" class="record-error">{{item.error_message}}</view>
+          <view class="record-action">查看详情</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</scroll-view>

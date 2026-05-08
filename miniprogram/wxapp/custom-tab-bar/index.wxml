@@ -1,0 +1,14 @@
+<view class="tab-shell">
+  <view class="tab-inner">
+    <button
+      wx:for="{{tabs}}"
+      wx:key="pagePath"
+      class="tab-button {{selected === index ? 'tab-button-active' : ''}}"
+      data-index="{{index}}"
+      data-path="{{item.pagePath}}"
+      bindtap="switchTab"
+    >
+      {{item.text}}
+    </button>
+  </view>
+</view>

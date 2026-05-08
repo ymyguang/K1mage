@@ -1,0 +1,118 @@
+<navigation-bar title="{{selectedTemplate ? selectedTemplate.name : '创作'}}" color="#776587" background="#FFFFFF"></navigation-bar>
+<scroll-view class="scrollarea" scroll-y type="list">
+  <view class="page-shell">
+    <view class="top-row">
+      <view class="back-button" bindtap="goBack">
+        <text class="back-arrow">‹</text>
+        <text>返回首页</text>
+      </view>
+
+      <view wx:if="{{user}}" class="points-strip">
+        <view class="points-strip-balance">
+          <text class="points-strip-title">剩余</text>
+          <text class="points-strip-value">{{user.points || 0}}</text>
+          <text class="points-strip-label">积分</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="template-hero" wx:if="{{selectedTemplate}}">
+      <image wx:if="{{selectedTemplate.previewSrc}}" class="template-hero-cover" src="{{selectedTemplate.previewSrc}}" mode="aspectFill"></image>
+      <view class="template-hero-body">
+        <view class="template-hero-name">{{selectedTemplate.name}}</view>
+        <view class="template-hero-desc">{{selectedTemplate.description}}</view>
+        <view class="template-hero-tags">
+          <text class="template-hero-meta">最多 {{selectedTemplate.maxImages}} 张图</text>
+          <text class="template-hero-price">{{selectedTemplate.priceLabel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!user}}" class="points-bar">
+      <view>
+        <view class="points-title">{{user ? '当前积分' : '未登录'}}</view>
+        <view class="points-value">{{user ? (user.points || 0) : '登录后查看'}}</view>
+      </view>
+      <button wx:if="{{!user}}" class="points-login" bindtap="handleLogin">微信登录</button>
+    </view>
+
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">上传图片</text>
+        <text class="section-note" wx:if="{{selectedTemplate}}">{{selectedImages.length}}/{{selectedTemplate.maxImages}}</text>
+      </view>
+
+      <view class="upload-grid {{selectedImages.length === 0 ? 'upload-grid-empty' : ''}} {{selectedTemplate && selectedTemplate.maxImages === 1 && selectedImages.length === 1 ? 'upload-grid-single' : ''}}">
+        <view
+          wx:for="{{selectedImages}}"
+          wx:key="path"
+          class="upload-thumb"
+        >
+          <image wx:if="{{item.path}}" class="upload-image" src="{{item.path}}" mode="aspectFill"></image>
+          <view wx:else class="upload-placeholder">{{item.label || '原图'}}</view>
+          <view wx:if="{{!historyMode}}" class="remove-btn" data-index="{{index}}" bindtap="removeImage">×</view>
+        </view>
+
+        <view
+          wx:if="{{!historyMode && selectedTemplate && selectedImages.length < selectedTemplate.maxImages}}"
+          class="upload-box"
+          bindtap="chooseImages"
+        >
+          <view class="upload-plus">+</view>
+          <view class="upload-text">添加图片</view>
+        </view>
+      </view>
+
+      <textarea
+        wx:if="{{selectedTemplate && selectedTemplate.isCustom}}"
+        class="prompt-input"
+        value="{{customPrompt}}"
+        maxlength="800"
+        placeholder="描述你想生成的画面，例如：赛博朋克风格的复古海报..."
+        bindinput="onPromptInput"
+      ></textarea>
+    </view>
+
+    <button
+      wx:if="{{!historyMode}}"
+      class="generate-button {{isGenerating ? 'generate-button-disabled' : ''}}"
+      loading="{{isGenerating}}"
+      disabled="{{isGenerating}}"
+      bindtap="generateImage"
+    >
+      {{isGenerating ? '正在生成...' : '生成作品'}}
+    </button>
+
+    <view class="error-card" wx:if="{{errorMessage}}">
+      {{errorMessage}}
+    </view>
+
+    <view class="section result-section">
+      <view class="section-head">
+        <text class="section-title">结果</text>
+        <text class="section-note" wx:if="{{isGenerating}}">{{historyMode ? historyStatusLabel : '生成中...'}}</text>
+        <text class="section-note" wx:elif="{{resultImagePath}}">
+          消耗 {{lastCostPoints}} 积分
+        </text>
+      </view>
+
+      <view wx:if="{{isGenerating}}" class="generating-card">
+        <view class="generating-spinner"></view>
+        <view class="generating-title">正在生成作品</view>
+        <view class="generating-copy">你可以继续操作，结果可以去历史记录查看。</view>
+      </view>
+
+      <view wx:elif="{{resultImagePath}}" class="result-card">
+        <image class="result-image" src="{{resultImagePath}}" mode="aspectFit" bindtap="previewResult"></image>
+        <view wx:if="{{lastRemainingPoints !== null}}" class="result-points">剩余 {{lastRemainingPoints}} 积分</view>
+        <button class="save-button" bindtap="saveResult">保存到相册</button>
+      </view>
+
+      <view wx:else class="empty-result">
+        <view class="empty-orbit"></view>
+        <view class="empty-title">还没有作品</view>
+        <view class="empty-copy">上传图片后点击生成，结果会出现在这里。</view>
+      </view>
+    </view>
+  </view>
+</scroll-view>

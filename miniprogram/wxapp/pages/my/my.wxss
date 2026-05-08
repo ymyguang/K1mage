@@ -1,0 +1,134 @@
+page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollarea {
+  flex: 1;
+  min-height: 0;
+}
+
+.page-shell {
+  padding: 28rpx 28rpx 150rpx;
+}
+
+.profile-card,
+.points-card,
+.menu-card,
+.error-card {
+  border: 2rpx solid rgba(119, 101, 135, 0.16);
+  border-radius: 32rpx;
+  background: #FFFFFF;
+  box-shadow: 0 14rpx 40rpx rgba(119, 101, 135, 0.1);
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  padding: 28rpx;
+}
+
+.avatar {
+  flex: none;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: rgba(119, 101, 135, 0.08);
+}
+
+.profile-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  overflow: hidden;
+  color: #776587;
+  font-size: 34rpx;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-subtitle {
+  margin-top: 10rpx;
+  color: rgba(119, 101, 135, 0.64);
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.points-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-top: 24rpx;
+  padding: 28rpx;
+}
+
+.points-label {
+  color: rgba(119, 101, 135, 0.64);
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.points-value {
+  margin-top: 8rpx;
+  color: #776587;
+  font-size: 56rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 168rpx;
+  height: 68rpx;
+  padding: 0 26rpx;
+  border-radius: 999rpx;
+  color: #FFFFFF;
+  background: #776587;
+  font-size: 25rpx;
+  font-weight: 900;
+}
+
+.menu-card {
+  margin-top: 24rpx;
+  overflow: hidden;
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 92rpx;
+  padding: 0 28rpx;
+  color: #776587;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.menu-row + .menu-row {
+  border-top: 1rpx solid rgba(119, 101, 135, 0.1);
+}
+
+.menu-row:active {
+  background: rgba(119, 101, 135, 0.06);
+}
+
+.menu-arrow {
+  color: rgba(119, 101, 135, 0.54);
+  font-size: 42rpx;
+}
+
+.error-card {
+  margin-top: 24rpx;
+  padding: 24rpx 28rpx;
+  color: #776587;
+  font-size: 25rpx;
+  line-height: 1.5;
+}

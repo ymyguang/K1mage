@@ -1,0 +1,68 @@
+<navigation-bar back="{{false}}" color="#776587" background="#FFFFFF"></navigation-bar>
+<scroll-view class="scrollarea" scroll-y type="list">
+  <view class="page-shell">
+    <view wx:if="{{!user}}" class="hero-card">
+      <image class="hero-logo" src="/assets/brand/k1mage-logo-card.png" mode="aspectFit"></image>
+
+      <view class="account-card {{user ? 'account-card-logged-in' : ''}}">
+        <view wx:if="{{!user}}" class="account-main">
+          <view class="account-title">登录后开始创作</view>
+        </view>
+        <view wx:if="{{!user}}" class="account-actions">
+          <button wx:if="{{!user}}" class="account-button primary" loading="{{isLoggingIn}}" bindtap="handleLogin">
+            微信登录
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="points-strip">
+      <image class="points-strip-logo" src="/assets/brand/k1mage-logo-pro.png" mode="aspectFit"></image>
+      <view class="points-strip-balance">
+        <text class="points-strip-title">剩余</text>
+        <text class="points-strip-value">{{user.points || 0}}</text>
+        <text class="points-strip-label">积分</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-head">
+        <text class="section-title">选择玩法</text>
+        <text class="section-note" wx:if="{{isLoadingTemplates}}">加载中...</text>
+        <text class="section-note" wx:else>{{templates.length}} 个灵感入口</text>
+      </view>
+
+      <view class="template-list">
+        <view
+          wx:for="{{templates}}"
+          wx:key="id"
+          class="template-row-card"
+          data-id="{{item.id}}"
+          bindtap="openTemplate"
+        >
+          <image wx:if="{{item.previewSrc}}" class="template-row-cover" src="{{item.previewSrc}}" mode="aspectFill"></image>
+          <view wx:else class="template-row-cover template-row-cover-empty">K1</view>
+          <view class="template-row-body">
+            <view class="template-row-top">
+              <text class="template-row-index">{{item.indexLabel}}</text>
+              <text class="template-row-name">{{item.name}}</text>
+            </view>
+            <view class="template-row-desc">{{item.description}}</view>
+            <view class="template-row-tags">
+              <text class="template-row-meta">最多 {{item.maxImages}} 张图</text>
+              <text class="template-row-price">{{item.priceLabel}}</text>
+              <text wx:if="{{item.isFeatured}}" class="template-row-featured">推荐</text>
+            </view>
+          </view>
+          <view class="template-row-arrow">
+            <text class="template-row-arrow-icon">›</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="error-card" wx:if="{{errorMessage}}">
+      {{errorMessage}}
+    </view>
+  </view>
+</scroll-view>
