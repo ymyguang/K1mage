@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+
 export const PROVIDER_CONFIGS = {
   gemini: {
     name: 'Google Gemini',
@@ -26,13 +28,37 @@ export const PROVIDER_CONFIGS = {
   },
   openai: {
     name: 'OpenAI',
-    baseUrl: 'https://api.openai.com/v1',
+    baseUrl: openaiBaseUrl,
     apiKey: process.env.OPENAI_API_KEY,
     enabled: !!process.env.OPENAI_API_KEY,
     models: [
       {
         id: 'gpt-image-2',
         name: 'GPT Image 2',
+        maxImages: 1,
+        supportsEditing: true,
+        supportsAspectRatio: true,
+        aspectRatios: ['1024x1024', '1536x1024', '1024x1536', 'auto']
+      },
+      {
+        id: 'gpt-image-1.5',
+        name: 'GPT Image 1.5',
+        maxImages: 1,
+        supportsEditing: true,
+        supportsAspectRatio: true,
+        aspectRatios: ['1024x1024', '1536x1024', '1024x1536', 'auto']
+      },
+      {
+        id: 'gpt-image-1',
+        name: 'GPT Image 1',
+        maxImages: 1,
+        supportsEditing: true,
+        supportsAspectRatio: true,
+        aspectRatios: ['1024x1024', '1536x1024', '1024x1536', 'auto']
+      },
+      {
+        id: 'gpt-image-1-mini',
+        name: 'GPT Image 1 Mini',
         maxImages: 1,
         supportsEditing: true,
         supportsAspectRatio: true,

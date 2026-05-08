@@ -66,6 +66,78 @@ export const resizeImageToMatch = (sourceDataUrl: string, targetImage: HTMLImage
      });
 };
 
+export const optimizeImageForApi = (
+  dataUrl: string,
+  maxSide: number = 1536,
+  quality: number = 0.9
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const longestSide = Math.max(img.naturalWidth, img.naturalHeight);
+      if (longestSide <= maxSide) {
+        resolve(dataUrl);
+        return;
+      }
+
+      const scale = maxSide / longestSide;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error("Could not get canvas context."));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => reject(new Error("Failed to optimize image for API."));
+    img.src = dataUrl;
+  });
+};
+
+export const combineImagesForApi = async (
+  dataUrls: string[],
+  width: number = 1024,
+  height: number = 512,
+  quality: number = 0.78
+): Promise<string> => {
+  const images = await Promise.all(dataUrls.map(loadImage));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error("Could not get canvas context.");
+  }
+
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, 0, width, height);
+
+  const gap = 16;
+  const count = images.length;
+  const cellWidth = (width - gap * (count + 1)) / count;
+  const cellHeight = height - gap * 2;
+
+  images.forEach((img, index) => {
+    const scale = Math.min(cellWidth / img.naturalWidth, cellHeight / img.naturalHeight);
+    const drawWidth = img.naturalWidth * scale;
+    const drawHeight = img.naturalHeight * scale;
+    const x = gap + index * (cellWidth + gap) + (cellWidth - drawWidth) / 2;
+    const y = gap + (cellHeight - drawHeight) / 2;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(gap + index * (cellWidth + gap), gap, cellWidth, cellHeight);
+    ctx.drawImage(img, x, y, drawWidth, drawHeight);
+  });
+
+  return canvas.toDataURL('image/jpeg', quality);
+};
+
 
 /**
  * Programmatically triggers a file download for a given data URL.

@@ -6,13 +6,19 @@
   "description_en": "Generate an intimate polaroid photo with blur effect and flash photography aesthetic",
   "emoji": "🎞️",
   "order": 100,
-  "click_count": 2,
+  "click_count": 34,
   "is_active": true,
   "is_featured": true,
-  "max_images": 4,
+  "max_images": 2,
   "tags": [
     "photo",
     "retro",
     "fun"
+  ],
+  "alias": [
+    "拍立得",
+    "合照",
+    "复古照片",
+    "闪光灯"
   ]
 }

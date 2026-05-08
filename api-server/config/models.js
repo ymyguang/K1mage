@@ -24,8 +24,26 @@ export const MODEL_CONFIGS = {
       {
         id: 'gpt-image-2',
         name: 'GPT Image 2',
-        description: 'Latest GPT image generation model',
+        description: 'GPT Image model supported by the configured OpenAI-compatible provider',
+        badge: 'Provider'
+      },
+      {
+        id: 'gpt-image-1.5',
+        name: 'GPT Image 1.5',
+        description: 'Latest GPT Image model for generation and editing',
         badge: 'Latest'
+      },
+      {
+        id: 'gpt-image-1',
+        name: 'GPT Image 1',
+        description: 'GPT Image model for generation and editing',
+        badge: 'GPT'
+      },
+      {
+        id: 'gpt-image-1-mini',
+        name: 'GPT Image 1 Mini',
+        description: 'Lower-cost GPT Image model',
+        badge: 'Mini'
       },
       {
         id: 'dall-e-3',

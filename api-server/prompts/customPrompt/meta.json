@@ -11,5 +11,14 @@
   "is_featured": true,
   "max_images": 4,
   "is_custom": true,
-  "tags": ["custom", "flexible"]
+  "tags": [
+    "custom",
+    "flexible"
+  ],
+  "alias": [
+    "自定义",
+    "自由创作",
+    "提示词",
+    "prompt"
+  ]
 }

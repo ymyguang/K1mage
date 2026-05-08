@@ -5,9 +5,30 @@ import { templateManager } from '../template-manager.js';
 
 const router = express.Router();
 
+function normalizeImages(images) {
+  if (!Array.isArray(images)) {
+    return [];
+  }
+
+  return images.map((image) => ({
+    ...image,
+    base64: image.base64 || image.data,
+  }));
+}
+
+function validateImages(images) {
+  for (const image of images) {
+    if (!image.base64 || !image.mimeType) {
+      return 'Each image must have base64 and mimeType properties';
+    }
+  }
+
+  return null;
+}
+
 router.post('/generate', async (req, res) => {
   try {
-    const { model, prompt, templateId, customPrompt, aspectRatio, quality, style, ...options } = req.body;
+    const { model, prompt, templateId, customPrompt, aspectRatio, quality, style, images: rawImages, mask, ...options } = req.body;
     
     if (!model) {
       return res.status(400).json({ 
@@ -51,14 +72,37 @@ router.post('/generate', async (req, res) => {
     
     const adapter = adapterFactory.getAdapterForModel(model);
     
-    const result = await adapter.generateImage({
-      model: model.split('/')[1],
-      prompt: finalPrompt,
-      aspectRatio,
-      quality,
-      style,
-      ...options
-    });
+    const images = normalizeImages(rawImages);
+    const imageValidationError = validateImages(images);
+    if (images.length > 0 && imageValidationError) {
+      return res.status(400).json({
+        success: false,
+        error: imageValidationError
+      });
+    }
+
+    const modelName = model.split('/')[1];
+    const hasInputImages = Array.isArray(images) && images.length > 0;
+
+    const result = hasInputImages
+      ? await adapter.editImage({
+          model: modelName,
+          prompt: finalPrompt,
+          images,
+          mask,
+          aspectRatio,
+          quality,
+          style,
+          ...options
+        })
+      : await adapter.generateImage({
+          model: modelName,
+          prompt: finalPrompt,
+          aspectRatio,
+          quality,
+          style,
+          ...options
+        });
     
     if (result.success) {
       res.json(result);

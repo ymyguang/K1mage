@@ -7,7 +7,7 @@ import ResultDisplay from './components/ResultDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import ImageEditorCanvas from './components/ImageEditorCanvas';
-import { dataUrlToFile, loadImage, resizeImageToMatch, downloadImage } from './utils/fileUtils';
+import { dataUrlToFile, loadImage, resizeImageToMatch, downloadImage, optimizeImageForApi, combineImagesForApi } from './utils/fileUtils';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import MultiImageUploader from './components/MultiImageUploader';
 import HistoryPanel from './components/HistoryPanel';
@@ -55,7 +55,7 @@ const App: React.FC = () => {
   const [imageOptions, setImageOptions] = useState<string[] | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('input');
-  const [defaultModel, setDefaultModel] = useState<string>('gemini/gemini-2.5-flash-image');
+  const [defaultModel, setDefaultModel] = useState<string>('openai/gpt-image-1');
   
   useEffect(() => {
     getDefaultModel().then(model => setDefaultModel(model));
@@ -255,16 +255,36 @@ const App: React.FC = () => {
             return; 
         }
 
-        if (primaryImageUrl) {
-            const imageParts = [{ 
-                base64: primaryImageUrl.split(',')[1], 
-                mimeType: primaryImageUrl.split(';')[0].split(':')[1] ?? 'image/png'
-            }];
+        const imageUrls = selectedTemplate.max_images && selectedTemplate.max_images > 1
+            ? multiImageUrls
+            : (primaryImageUrl ? [primaryImageUrl] : []);
+
+        if (imageUrls.length > 0) {
+            const imageParts = [];
+            const isMultiImageTemplate = selectedTemplate.max_images && selectedTemplate.max_images > 1;
+            if (isMultiImageTemplate && imageUrls.length > 1) {
+                const combinedImageUrl = await combineImagesForApi(imageUrls, 1024, 512, 0.78);
+                imageParts.push({
+                    base64: combinedImageUrl.split(',')[1],
+                    mimeType: combinedImageUrl.split(';')[0].split(':')[1] ?? 'image/jpeg'
+                });
+            } else {
+                for (const imageUrl of imageUrls) {
+                    const optimizedImageUrl = await optimizeImageForApi(imageUrl, 1024, 0.82);
+                    imageParts.push({
+                        base64: optimizedImageUrl.split(',')[1],
+                        mimeType: optimizedImageUrl.split(';')[0].split(':')[1] ?? 'image/jpeg'
+                    });
+                }
+            }
             
             if (secondaryImageUrl) {
+                const optimizedSecondaryImageUrl = isMultiImageTemplate
+                    ? await optimizeImageForApi(secondaryImageUrl, 768, 0.75)
+                    : await optimizeImageForApi(secondaryImageUrl, 1024, 0.82);
                 imageParts.push({
-                    base64: secondaryImageUrl.split(',')[1],
-                    mimeType: secondaryImageUrl.split(';')[0].split(':')[1] ?? 'image/png'
+                    base64: optimizedSecondaryImageUrl.split(',')[1],
+                    mimeType: optimizedSecondaryImageUrl.split(';')[0].split(':')[1] ?? 'image/jpeg'
                 });
             }
 
@@ -273,6 +293,11 @@ const App: React.FC = () => {
                 defaultModel,
                 { 
                     images: imageParts,
+                    aspectRatio: isMultiImageTemplate ? '1:1' : 'auto',
+                    quality: 'low',
+                    output_format: 'jpeg',
+                    output_compression: isMultiImageTemplate ? 75 : 85,
+                    useResponsesApi: true,
                     customPrompt: isCustom ? customPrompt : undefined
                 }
             );
@@ -381,8 +406,10 @@ const App: React.FC = () => {
     if (selectedTemplate) {
         if (selectedTemplate.is_custom) {
             isGenerateDisabled = isLoading || isCustomPromptEmpty;
-        } else if (selectedTemplate.max_images) {
+        } else if (selectedTemplate.max_images && selectedTemplate.max_images > 1) {
             isGenerateDisabled = isLoading || multiImageUrls.length === 0;
+        } else if (selectedTemplate.max_images) {
+            isGenerateDisabled = isLoading || !primaryImageUrl;
         } else {
             isGenerateDisabled = isLoading;
         }

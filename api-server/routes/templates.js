@@ -5,26 +5,34 @@ import fs from 'fs/promises';
 
 const router = express.Router();
 
+function serializeTemplate(t) {
+  return {
+    id: t.id,
+    name: t.name,
+    name_en: t.name_en,
+    alias: t.alias || [],
+    description: t.description,
+    description_en: t.description_en,
+    emoji: t.emoji,
+    order: t.order,
+    click_count: t.click_count,
+    is_active: t.is_active,
+    is_featured: t.is_featured,
+    max_images: t.max_images,
+    is_custom: t.is_custom,
+    tags: t.tags || [],
+    price: t.price || null,
+    preview_version: t.preview_version,
+    preview_url: t.preview_url
+  };
+}
+
 router.get('/', (req, res) => {
   try {
     const { sort, featured, tags } = req.query;
     const templates = templateManager.getTemplates({ sort, featured, tags });
     
-    const templatesList = templates.map(t => ({
-      id: t.id,
-      name: t.name,
-      name_en: t.name_en,
-      description: t.description,
-      description_en: t.description_en,
-      emoji: t.emoji,
-      order: t.order,
-      click_count: t.click_count,
-      is_featured: t.is_featured,
-      max_images: t.max_images,
-      is_custom: t.is_custom,
-      tags: t.tags,
-      preview_url: t.preview_url
-    }));
+    const templatesList = templates.map(serializeTemplate);
     
     res.json({ 
       success: true, 
@@ -53,21 +61,7 @@ router.get('/:id', (req, res) => {
     
     res.json({ 
       success: true, 
-      template: {
-        id: template.id,
-        name: template.name,
-        name_en: template.name_en,
-        description: template.description,
-        description_en: template.description_en,
-        emoji: template.emoji,
-        order: template.order,
-        click_count: template.click_count,
-        is_featured: template.is_featured,
-        max_images: template.max_images,
-        is_custom: template.is_custom,
-        tags: template.tags,
-        preview_url: template.preview_url
-      }
+      template: serializeTemplate(template)
     });
   } catch (error) {
     console.error(`Error in GET /templates/${req.params.id}:`, error);
@@ -93,6 +87,9 @@ router.get('/:id/preview', async (req, res) => {
     
     try {
       await fs.access(previewPath);
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
       res.sendFile(previewPath);
     } catch {
       res.status(404).json({ 

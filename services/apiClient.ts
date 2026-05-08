@@ -7,6 +7,9 @@ class ApiClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
+    const timeoutMs = options.timeoutMs || 240000;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     
     const config = {
       headers: {
@@ -14,7 +17,9 @@ class ApiClient {
         ...options.headers,
       },
       ...options,
+      signal: options.signal || controller.signal,
     };
+    delete config.timeoutMs;
 
     try {
       const response = await fetch(url, config);
@@ -27,7 +32,12 @@ class ApiClient {
       return data;
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error('API request timed out. The image provider did not respond in time.');
+      }
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -110,10 +120,10 @@ export async function getEnabledProviders() {
 export async function getDefaultModel(): Promise<string> {
   try {
     const response = await apiClient.request('/api/image/default-model');
-    return response.model || 'gemini/gemini-2.5-flash-image';
+    return response.model || 'openai/gpt-image-1';
   } catch (error) {
     console.error('Error fetching default model:', error);
-    return 'gemini/gemini-2.5-flash-image';
+    return 'openai/gpt-image-1';
   }
 }
 

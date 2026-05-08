@@ -25,6 +25,7 @@ class TemplateManager {
         try {
           const metaPath = path.join(templateDir, 'meta.json');
           const promptPath = path.join(templateDir, 'prompt.txt');
+          const pricePath = path.join(templateDir, 'price.json');
           
           const [metaContent, promptContent] = await Promise.all([
             fs.readFile(metaPath, 'utf-8'),
@@ -33,12 +34,19 @@ class TemplateManager {
           
           const meta = JSON.parse(metaContent);
           const prompt = promptContent.trim();
+          const price = await this.readJsonIfExists(pricePath, {
+            price_per_image: 0,
+            currency: 'CNY'
+          });
+          const previewVersion = await this.getPreviewVersion(templateId);
           
           const template = {
             ...meta,
             id: templateId,
             prompt,
-            preview_url: `/api/templates/${templateId}/preview`
+            price,
+            preview_version: previewVersion,
+            preview_url: `/api/templates/${templateId}/preview?v=${previewVersion}`
           };
           
           this.templates.set(templateId, template);
@@ -51,6 +59,27 @@ class TemplateManager {
       console.log(`Loaded ${this.templates.size} templates`);
     } catch (err) {
       console.error('Failed to load templates:', err);
+    }
+  }
+
+  async readJsonIfExists(filePath, fallback) {
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return JSON.parse(content);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.warn(`Failed to load JSON ${filePath}:`, err.message);
+      }
+      return fallback;
+    }
+  }
+
+  async getPreviewVersion(id) {
+    try {
+      const stat = await fs.stat(this.getPreviewPath(id));
+      return Math.round(stat.mtimeMs);
+    } catch {
+      return Date.now();
     }
   }
 
@@ -108,6 +137,8 @@ class TemplateManager {
         const meta = { ...template };
         delete meta.prompt;
         delete meta.preview_url;
+        delete meta.preview_version;
+        delete meta.price;
         await fs.writeFile(metaPath, JSON.stringify(meta, null, 2));
       } catch (err) {
         console.warn(`Failed to update click count for ${id}:`, err.message);

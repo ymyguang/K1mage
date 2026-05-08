@@ -6,9 +6,19 @@
   "description_en": "Transform photo into 3D character figure with packaging box and display base",
   "emoji": "🧍",
   "order": 90,
-  "click_count": 0,
+  "click_count": 14,
   "is_active": true,
   "is_featured": false,
   "max_images": 1,
-  "tags": ["3d", "figure", "collectible"]
+  "tags": [
+    "3d",
+    "figure",
+    "collectible"
+  ],
+  "alias": [
+    "手办",
+    "手办化",
+    "3D手办",
+    "收藏模型"
+  ]
 }
