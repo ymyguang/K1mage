@@ -6,6 +6,34 @@ const GPT_IMAGE_MODELS = new Set(['gpt-image-2', 'gpt-image-1.5', 'gpt-image-1',
 const DEFAULT_RESPONSES_MODEL = 'gpt-5.4';
 const RESPONSES_IMAGE_MODELS = ['gpt-5.2'];
 
+function isToApisBaseUrl(baseUrl) {
+  return String(baseUrl || '').includes('toapis.com');
+}
+
+function isApimartBaseUrl(baseUrl) {
+  return String(baseUrl || '').includes('api.apimart.ai');
+}
+
+function isUrlUploadProvider(baseUrl) {
+  return isToApisBaseUrl(baseUrl) || isApimartBaseUrl(baseUrl);
+}
+
+function resolveCompatibleSize(aspectRatio) {
+  if (['1:1', '16:9', '9:16', '4:3', '3:4'].includes(aspectRatio)) {
+    return aspectRatio;
+  }
+
+  return '1:1';
+}
+
+function resolveProviderImageModel(baseUrl, model) {
+  if (isApimartBaseUrl(baseUrl) && model === 'gpt-image-2') {
+    return 'gpt-image-2-official';
+  }
+
+  return model;
+}
+
 export class OpenAIAdapter extends BaseAdapter {
   constructor(providerConfig) {
     super(providerConfig);
@@ -34,7 +62,9 @@ export class OpenAIAdapter extends BaseAdapter {
     const startTime = Date.now();
 
     try {
-      const data = request.useResponsesApi
+      const data = isUrlUploadProvider(this.baseUrl)
+        ? await this.requestUploadedUrlImageEdit(request)
+        : request.useResponsesApi
         ? await this.requestResponsesImage(request)
         : await this.withGptImageFallback(request, (nextRequest) => this.requestImageEdit(nextRequest));
       const image = this.extractImage(data);
@@ -53,14 +83,30 @@ export class OpenAIAdapter extends BaseAdapter {
 
   async requestImageGeneration(request) {
     const modelConfig = this.validateRequest(request);
-    const requestBody = {
-      model: request.model,
-      prompt: request.prompt,
-      n: 1,
-      size: this.convertAspectRatio(request.aspectRatio, modelConfig.aspectRatios || ['1024x1024'])
-    };
+    const requestBody = isUrlUploadProvider(this.baseUrl)
+      ? {
+          model: resolveProviderImageModel(this.baseUrl, request.model),
+          prompt: request.prompt,
+          n: 1,
+          size: resolveCompatibleSize(request.aspectRatio),
+          resolution: request.resolution || process.env.OPENAI_IMAGE_RESOLUTION || '1k',
+          response_format: request.response_format || 'url'
+        }
+      : {
+          model: request.model,
+          prompt: request.prompt,
+          n: 1,
+          size: this.convertAspectRatio(request.aspectRatio, modelConfig.aspectRatios || ['1024x1024'])
+        };
 
-    if (request.model === 'dall-e-3') {
+    if (isUrlUploadProvider(this.baseUrl)) {
+      // These providers return async tasks; parseImageResponse polls them.
+      if (Array.isArray(request.imageUrls) && request.imageUrls.length > 0) {
+        requestBody.image_urls = isApimartBaseUrl(this.baseUrl)
+          ? request.imageUrls.map((url) => ({ url }))
+          : request.imageUrls;
+      }
+    } else if (request.model === 'dall-e-3') {
       requestBody.quality = request.quality || 'standard';
       requestBody.style = request.style || 'vivid';
       requestBody.response_format = 'b64_json';
@@ -139,6 +185,46 @@ export class OpenAIAdapter extends BaseAdapter {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  async requestUploadedUrlImageEdit(request) {
+    this.validateImageRequest(request);
+
+    const imageUrls = [];
+    for (const image of request.images) {
+      imageUrls.push(await this.uploadProviderImage(image));
+    }
+
+    return await this.requestImageGeneration({
+      ...request,
+      imageUrls
+    });
+  }
+
+  async uploadProviderImage(image) {
+    const formData = new FormData();
+    const ext = image.mimeType === 'image/png' ? 'png' : 'jpg';
+    const imageBlob = this.base64ToBlob(image.base64, image.mimeType);
+    formData.append('file', imageBlob, `reference.${ext}`);
+
+    const response = await fetch(`${this.baseUrl}/uploads/images`, {
+      method: 'POST',
+      headers: this.formHeaders(),
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await this.parseErrorResponse(response);
+      throw { response: { status: response.status, data: errorData } };
+    }
+
+    const data = await response.json();
+    const imageUrl = data.data?.url || data.url;
+    if (!imageUrl) {
+      throw new Error('Image upload response missing image url');
+    }
+
+    return imageUrl;
   }
 
   async withGptImageFallback(request, call) {
@@ -494,7 +580,128 @@ export class OpenAIAdapter extends BaseAdapter {
       throw { response: { status: response.status, data: errorData } };
     }
 
-    return await response.json();
+    const data = await response.json();
+
+    if (isToApisBaseUrl(this.baseUrl) && data?.object === 'generation.task') {
+      return await this.pollToApisImageTask(data.id);
+    }
+
+    if (isApimartBaseUrl(this.baseUrl)) {
+      const taskId = data?.data?.[0]?.task_id || data?.task_id || data?.id;
+      if (taskId) {
+        return await this.pollApimartImageTask(taskId);
+      }
+    }
+
+    return data;
+  }
+
+  async pollApimartImageTask(taskId) {
+    const maxWaitMs = Number(process.env.APIMART_IMAGE_MAX_WAIT_MS || process.env.TOAPIS_IMAGE_MAX_WAIT_MS || 300000);
+    const intervalMs = Number(process.env.APIMART_IMAGE_POLL_INTERVAL_MS || process.env.TOAPIS_IMAGE_POLL_INTERVAL_MS || 3000);
+    const startedAt = Date.now();
+
+    await this.sleep(Number(process.env.APIMART_IMAGE_INITIAL_WAIT_MS || process.env.TOAPIS_IMAGE_INITIAL_WAIT_MS || 2000));
+
+    while (Date.now() - startedAt < maxWaitMs) {
+      const response = await fetch(`${this.baseUrl}/tasks/${encodeURIComponent(taskId)}?language=en`, {
+        method: 'GET',
+        headers: this.jsonHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await this.parseErrorResponse(response);
+        throw { response: { status: response.status, data: errorData } };
+      }
+
+      const payload = await response.json();
+      const data = payload.data || payload;
+      const status = data.status;
+
+      if (status === 'completed' || status === 'succeeded' || status === 'success') {
+        const firstImage = data.result?.images?.[0];
+        const imageUrl = Array.isArray(firstImage?.url)
+          ? firstImage.url[0]
+          : firstImage?.url || data.result?.url || data.url;
+
+        if (!imageUrl) {
+          throw new Error('APIMart task completed without image url');
+        }
+
+        return {
+          data: [
+            {
+              url: imageUrl,
+              model: data.model
+            }
+          ],
+          task: data
+        };
+      }
+
+      if (status === 'failed' || status === 'error') {
+        throw new Error(data.fail_reason || data.error?.message || 'APIMart image generation failed');
+      }
+
+      await this.sleep(intervalMs);
+    }
+
+    throw new Error(`APIMart image generation timed out: ${taskId}`);
+  }
+
+  async pollToApisImageTask(taskId) {
+    if (!taskId) {
+      throw new Error('ToAPIs task response missing id');
+    }
+
+    const maxWaitMs = Number(process.env.TOAPIS_IMAGE_MAX_WAIT_MS || 120000);
+    const intervalMs = Number(process.env.TOAPIS_IMAGE_POLL_INTERVAL_MS || 3000);
+    const startedAt = Date.now();
+
+    await this.sleep(Number(process.env.TOAPIS_IMAGE_INITIAL_WAIT_MS || 2000));
+
+    while (Date.now() - startedAt < maxWaitMs) {
+      const response = await fetch(`${this.baseUrl}/images/generations/${encodeURIComponent(taskId)}`, {
+        method: 'GET',
+        headers: this.jsonHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await this.parseErrorResponse(response);
+        throw { response: { status: response.status, data: errorData } };
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'completed') {
+        const imageUrl = data.result?.data?.[0]?.url || data.data?.[0]?.url || data.url;
+        if (!imageUrl) {
+          throw new Error('ToAPIs task completed without image url');
+        }
+
+        return {
+          data: [
+            {
+              url: imageUrl,
+              model: data.model
+            }
+          ],
+          task: data
+        };
+      }
+
+      if (data.status === 'failed') {
+        throw new Error(data.error?.message || 'ToAPIs image generation failed');
+      }
+
+      await this.sleep(intervalMs);
+    }
+
+    throw new Error(`ToAPIs image generation timed out: ${taskId}`);
+  }
+
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   extractImage(data) {

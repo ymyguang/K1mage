@@ -2,6 +2,7 @@ import express from 'express';
 import { templateManager } from '../template-manager.js';
 import path from 'path';
 import fs from 'fs/promises';
+import { getImageCostPoints } from '../services/point-service.js';
 
 const router = express.Router();
 
@@ -22,15 +23,26 @@ function serializeTemplate(t) {
     is_custom: t.is_custom,
     tags: t.tags || [],
     price: t.price || null,
+    point_cost: getImageCostPoints(t),
     preview_version: t.preview_version,
     preview_url: t.preview_url
   };
 }
 
+function getHiddenTemplateIds() {
+  return (process.env.HIDDEN_TEMPLATE_IDS || '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 router.get('/', (req, res) => {
   try {
     const { sort, featured, tags } = req.query;
-    const templates = templateManager.getTemplates({ sort, featured, tags });
+    const hiddenIds = new Set(getHiddenTemplateIds());
+    const templates = templateManager
+      .getTemplates({ sort, featured, tags })
+      .filter((template) => !hiddenIds.has(template.id));
     
     const templatesList = templates.map(serializeTemplate);
     
@@ -50,6 +62,13 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
   try {
+    if (getHiddenTemplateIds().includes(req.params.id)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Template not found'
+      });
+    }
+
     const template = templateManager.getTemplate(req.params.id);
     
     if (!template) {

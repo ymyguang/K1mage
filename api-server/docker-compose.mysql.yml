@@ -1,0 +1,20 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: k1mage-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: k1mage_root_password
+      MYSQL_DATABASE: k1mage
+      MYSQL_USER: k1mage
+      MYSQL_PASSWORD: k1mage_password
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - k1mage_mysql_data:/var/lib/mysql
+
+volumes:
+  k1mage_mysql_data:
