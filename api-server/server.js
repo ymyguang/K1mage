@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import imageRoutes from './routes/image.js';
-import geminiRoutes from './routes/gemini.js';
 import templateRoutes from './routes/templates.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -23,7 +22,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/image', imageRoutes);
-app.use('/api/gemini', geminiRoutes);
 
 app.get('/', (req, res) => {
   res.json({
@@ -43,11 +41,7 @@ app.get('/', (req, res) => {
       models: 'GET /api/image/models',
       providers: 'GET /api/image/providers',
       generateImage: 'POST /api/image/generate',
-      editImage: 'POST /api/image/edit',
-      legacy: {
-        editImage: 'POST /api/gemini/edit-image',
-        generateImage: 'POST /api/gemini/generate-image'
-      }
+      editImage: 'POST /api/image/edit'
     }
   });
 });

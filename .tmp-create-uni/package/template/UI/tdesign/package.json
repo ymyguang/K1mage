@@ -1,8 +1,0 @@
-{
-  "dependencies": {
-    "@tdesign/uniapp": "^0.8.1"
-  },
-  "devDependencies": {
-    "less": "^4.6.4"
-  }
-}

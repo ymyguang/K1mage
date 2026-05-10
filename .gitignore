@@ -28,6 +28,10 @@ api-server/outputs/
 .env.test.local
 .env.production.local
 
+# Temporary files
+*.tgz
+.tmp-*
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

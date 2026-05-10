@@ -11,11 +11,16 @@
 ```
 K1mage/
 ├── api-server/          # 后端API服务器（多模型统一调用）
-├── miniprogram/         # 小程序版本（UniApp + Vue 3）
-├── services/            # Web版前端服务
-├── components/          # Web版React组件
-├── constants.ts         # Web版常量配置
-└── App.tsx              # Web版主应用
+├── miniprogram/         # 微信小程序（原生开发）
+│   └── wxapp/           # 小程序源码
+└── web/                 # Web版（React + Vite）
+    ├── components/      # React组件
+    ├── services/        # 前端服务
+    ├── i18n/            # 国际化
+    ├── theme/           # 主题
+    ├── utils/           # 工具函数
+    ├── App.tsx          # 主应用
+    └── index.tsx        # 入口
 ```
 
 ## 支持的模型
@@ -51,6 +56,8 @@ npm run dev
 ### 2. 启动Web版本
 
 ```bash
+cd web
+
 # 安装依赖
 npm install
 
@@ -63,18 +70,7 @@ npm run dev
 
 ### 3. 启动小程序版本
 
-```bash
-cd miniprogram
-
-# 安装依赖
-npm install
-
-# 微信小程序开发
-npm run dev:mp-weixin
-
-# H5开发
-npm run dev:h5
-```
+使用微信开发者工具打开 `miniprogram/wxapp/` 目录即可。
 
 ## 环境变量配置
 
