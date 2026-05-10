@@ -1,0 +1,20 @@
+{
+    "id":  "style_011",
+    "name":  "富士胶片草莓校园人像",
+    "name_en":  "富士胶片草莓校园人像",
+    "description":  "上传 1 张图片，生成「富士胶片草莓校园人像」效果。",
+    "description_en":  "Upload 1 reference image to generate the 富士胶片草莓校园人像 effect.",
+    "order":  69,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "富士胶片草莓校园人像",
+                  "style_011"
+              ]
+}

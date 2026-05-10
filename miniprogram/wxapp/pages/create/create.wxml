@@ -17,7 +17,7 @@
     </view>
 
     <view class="template-hero" wx:if="{{selectedTemplate}}">
-      <image wx:if="{{selectedTemplate.previewSrc}}" class="template-hero-cover" src="{{selectedTemplate.previewSrc}}" mode="aspectFill"></image>
+      <image wx:if="{{selectedTemplate.previewSrc}}" class="template-hero-cover" src="{{selectedTemplate.previewSrc}}" mode="aspectFit" bindtap="previewTemplateImage"></image>
       <view class="template-hero-body">
         <view class="template-hero-name">{{selectedTemplate.name}}</view>
         <view class="template-hero-desc">{{selectedTemplate.description}}</view>

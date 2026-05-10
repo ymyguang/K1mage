@@ -1,0 +1,20 @@
+{
+    "id":  "style_021",
+    "name":  "电影感肖像",
+    "name_en":  "电影感肖像",
+    "description":  "上传一张图片，生成“电影感肖像”效果。",
+    "description_en":  "上传一张图片，生成“电影感肖像”效果。",
+    "order":  59,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "电影感肖像",
+                  "style_021"
+              ]
+}

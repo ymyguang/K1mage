@@ -412,6 +412,36 @@ Page({
     })
   },
 
+  async previewTemplateImage() {
+    const previewSrc = this.data.selectedTemplate && this.data.selectedTemplate.previewSrc
+    if (!previewSrc) return
+
+    wx.showLoading({ title: 'Loading', mask: true })
+
+    try {
+      let previewPath = previewSrc
+
+      if (String(previewSrc).startsWith('http')) {
+        previewPath = await this.downloadImageToTempFile(previewSrc)
+      } else if (String(previewSrc).startsWith('data:image/')) {
+        const templateId = this.data.selectedTemplate && this.data.selectedTemplate.id
+        previewPath = await writeBase64ImageToFile(previewSrc, `template-${templateId || Date.now()}`)
+      }
+
+      wx.previewImage({
+        urls: [previewPath],
+        current: previewPath,
+      })
+    } catch (error) {
+      wx.showToast({
+        title: 'Preview failed',
+        icon: 'none',
+      })
+    } finally {
+      wx.hideLoading()
+    }
+  },
+
   async saveResult() {
     const { resultImagePath } = this.data
     if (!resultImagePath) return

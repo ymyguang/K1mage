@@ -1,0 +1,20 @@
+{
+    "id":  "style_008",
+    "name":  "CCD 相机闪光灯韩国偶像",
+    "name_en":  "CCD 相机闪光灯韩国偶像",
+    "description":  "上传 1 张图片，生成「CCD 相机闪光灯韩国偶像」效果。",
+    "description_en":  "Upload 1 reference image to generate the CCD 相机闪光灯韩国偶像 effect.",
+    "order":  72,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "CCD 相机闪光灯韩国偶像",
+                  "style_008"
+              ]
+}

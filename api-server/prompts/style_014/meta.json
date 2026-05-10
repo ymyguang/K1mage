@@ -1,0 +1,20 @@
+{
+    "id":  "style_014",
+    "name":  "复古报纸头版设计",
+    "name_en":  "复古报纸头版设计",
+    "description":  "上传 1 张图片，生成「复古报纸头版设计」效果。",
+    "description_en":  "Upload 1 reference image to generate the 复古报纸头版设计 effect.",
+    "order":  66,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "复古报纸头版设计",
+                  "style_014"
+              ]
+}

@@ -40,7 +40,7 @@
           data-id="{{item.id}}"
           bindtap="openTemplate"
         >
-          <image wx:if="{{item.previewSrc}}" class="template-row-cover" src="{{item.previewSrc}}" mode="aspectFill"></image>
+          <image wx:if="{{item.coverSrc}}" class="template-row-cover" src="{{item.coverSrc}}" mode="aspectFill"></image>
           <view wx:else class="template-row-cover template-row-cover-empty">K1</view>
           <view class="template-row-body">
             <view class="template-row-top">

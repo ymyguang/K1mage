@@ -1,0 +1,20 @@
+{
+    "id":  "style_010",
+    "name":  "柔和黑雾编辑人像",
+    "name_en":  "柔和黑雾编辑人像",
+    "description":  "上传 1 张图片，生成「柔和黑雾编辑人像」效果。",
+    "description_en":  "Upload 1 reference image to generate the 柔和黑雾编辑人像 effect.",
+    "order":  70,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "柔和黑雾编辑人像",
+                  "style_010"
+              ]
+}

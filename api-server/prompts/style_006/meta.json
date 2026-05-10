@@ -1,0 +1,20 @@
+{
+    "id":  "style_006",
+    "name":  "9:16 Cosplay 人像截图",
+    "name_en":  "9:16 Cosplay 人像截图",
+    "description":  "上传 1 张图片，生成「9:16 Cosplay 人像截图」效果。",
+    "description_en":  "Upload 1 reference image to generate the 9:16 Cosplay 人像截图 effect.",
+    "order":  74,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "9:16 Cosplay 人像截图",
+                  "style_006"
+              ]
+}

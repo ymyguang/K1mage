@@ -1,0 +1,20 @@
+{
+    "id":  "style_009",
+    "name":  "韩国偶像 3x3 拼贴人像",
+    "name_en":  "韩国偶像 3x3 拼贴人像",
+    "description":  "上传 1 张图片，生成「韩国偶像 3x3 拼贴人像」效果。",
+    "description_en":  "Upload 1 reference image to generate the 韩国偶像 3x3 拼贴人像 effect.",
+    "order":  71,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "韩国偶像 3x3 拼贴人像",
+                  "style_009"
+              ]
+}

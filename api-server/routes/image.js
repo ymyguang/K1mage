@@ -67,6 +67,23 @@ function validateImages(images) {
   return null;
 }
 
+function validateTemplateImageLimit(template, images) {
+  if (!template) {
+    return null;
+  }
+
+  const maxImages = Number(template.max_images ?? template.maxImages);
+  if (!Number.isFinite(maxImages) || maxImages < 0) {
+    return null;
+  }
+
+  if (images.length > maxImages) {
+    return `Template ${template.id} accepts at most ${maxImages} image${maxImages === 1 ? '' : 's'}`;
+  }
+
+  return null;
+}
+
 function createInputImagesPreview(images) {
   if (!Array.isArray(images) || images.length === 0) {
     return null;
@@ -156,17 +173,18 @@ router.post('/generate', async (req, res) => {
     }
     
     let finalPrompt = prompt;
+    let selectedTemplate = null;
     
     if (templateId) {
-      const template = templateManager.getTemplate(templateId);
-      if (!template) {
+      selectedTemplate = templateManager.getTemplate(templateId);
+      if (!selectedTemplate) {
         return res.status(400).json({ 
           success: false, 
           error: `Template not found: ${templateId}` 
         });
       }
       
-      if (template.is_custom) {
+      if (selectedTemplate.is_custom) {
         if (!customPrompt || typeof customPrompt !== 'string' || customPrompt.trim() === '') {
           return res.status(400).json({ 
             success: false, 
@@ -175,10 +193,8 @@ router.post('/generate', async (req, res) => {
         }
         finalPrompt = customPrompt;
       } else {
-        finalPrompt = template.prompt;
+        finalPrompt = selectedTemplate.prompt;
       }
-      
-      await templateManager.incrementClickCount(templateId);
     }
     
     if (!finalPrompt || typeof finalPrompt !== 'string' || finalPrompt.trim() === '') {
@@ -196,6 +212,16 @@ router.post('/generate', async (req, res) => {
         error: imageValidationError
       });
     }
+    const imageLimitError = validateTemplateImageLimit(selectedTemplate, images);
+    if (imageLimitError) {
+      return res.status(400).json({
+        success: false,
+        error: imageLimitError
+      });
+    }
+    if (templateId) {
+      await templateManager.incrementClickCount(templateId);
+    }
 
     try {
       user = await getUserFromRequest(req);
@@ -208,7 +234,7 @@ router.post('/generate', async (req, res) => {
 
     const modelName = model.split('/')[1];
     const hasInputImages = Array.isArray(images) && images.length > 0;
-    const template = templateId ? templateManager.getTemplate(templateId) : null;
+    const template = selectedTemplate;
     costPoints = getImageCostPoints(template);
 
     let remainingPoints;

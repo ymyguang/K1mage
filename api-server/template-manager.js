@@ -39,6 +39,7 @@ class TemplateManager {
             currency: 'CNY'
           });
           const previewVersion = await this.getPreviewVersion(templateId);
+          const coverVersion = await this.getCoverVersion(templateId);
           
           const template = {
             ...meta,
@@ -46,7 +47,9 @@ class TemplateManager {
             prompt,
             price,
             preview_version: previewVersion,
-            preview_url: `/api/templates/${templateId}/preview?v=${previewVersion}`
+            preview_url: `/api/templates/${templateId}/preview?v=${previewVersion}`,
+            cover_version: coverVersion,
+            cover_url: coverVersion ? `/api/templates/${templateId}/cover?v=${coverVersion}` : null
           };
           
           this.templates.set(templateId, template);
@@ -80,6 +83,15 @@ class TemplateManager {
       return Math.round(stat.mtimeMs);
     } catch {
       return Date.now();
+    }
+  }
+
+  async getCoverVersion(id) {
+    try {
+      const stat = await fs.stat(this.getCoverPath(id));
+      return Math.round(stat.mtimeMs);
+    } catch {
+      return null;
     }
   }
 
@@ -127,6 +139,10 @@ class TemplateManager {
     return path.join(this.promptsDir, id, 'preview.png');
   }
 
+  getCoverPath(id) {
+    return path.join(this.promptsDir, id, 'cover.png');
+  }
+
   async incrementClickCount(id) {
     const template = this.templates.get(id);
     if (template) {
@@ -138,6 +154,8 @@ class TemplateManager {
         delete meta.prompt;
         delete meta.preview_url;
         delete meta.preview_version;
+        delete meta.cover_url;
+        delete meta.cover_version;
         delete meta.price;
         await fs.writeFile(metaPath, JSON.stringify(meta, null, 2));
       } catch (err) {

@@ -1,0 +1,20 @@
+{
+    "id":  "style_022",
+    "name":  "咖啡馆肖像",
+    "name_en":  "咖啡馆肖像",
+    "description":  "上传一张图片，生成“咖啡馆肖像”效果。",
+    "description_en":  "上传一张图片，生成“咖啡馆肖像”效果。",
+    "order":  58,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "咖啡馆肖像",
+                  "style_022"
+              ]
+}

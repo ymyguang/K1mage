@@ -1,0 +1,20 @@
+{
+    "id":  "style_001",
+    "name":  "便利店霓虹灯人像",
+    "name_en":  "便利店霓虹灯人像",
+    "description":  "上传 1 张图片，生成「便利店霓虹灯人像」效果。",
+    "description_en":  "Upload 1 reference image to generate the 便利店霓虹灯人像 effect.",
+    "order":  79,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "便利店霓虹灯人像",
+                  "style_001"
+              ]
+}

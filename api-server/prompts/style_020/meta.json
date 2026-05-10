@@ -1,0 +1,20 @@
+{
+    "id":  "style_020",
+    "name":  "奢华运动服篮球运动员宣传海报",
+    "name_en":  "奢华运动服篮球运动员宣传海报",
+    "description":  "上传 1 张图片，生成「奢华运动服篮球运动员宣传海报」效果。",
+    "description_en":  "Upload 1 reference image to generate the 奢华运动服篮球运动员宣传海报 effect.",
+    "order":  60,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "奢华运动服篮球运动员宣传海报",
+                  "style_020"
+              ]
+}

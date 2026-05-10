@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://192.168.5.147:3001'
+const API_BASE_URL = 'http://localhost:3001'
 
 const LOCAL_PREVIEW_ASSETS = {
   figurine: '/assets/templates/figurine.jpg',
@@ -76,19 +76,19 @@ function getTemplateId(template) {
   return template.id || template.slug || ''
 }
 
+function resolveApiAssetUrl(value) {
+  if (!value) return ''
+  return String(value).startsWith('http') ? value : `${API_BASE_URL}${value}`
+}
+
 function resolvePreviewSrc(template) {
   const id = getTemplateId(template)
-  if (LOCAL_PREVIEW_ASSETS[id]) {
-    return LOCAL_PREVIEW_ASSETS[id]
-  }
+  return resolveApiAssetUrl(template.preview_url) || LOCAL_PREVIEW_ASSETS[id] || ''
+}
 
-  if (template.preview_url) {
-    return String(template.preview_url).startsWith('http')
-      ? template.preview_url
-      : `${API_BASE_URL}${template.preview_url}`
-  }
-
-  return ''
+function resolveCoverSrc(template) {
+  const id = getTemplateId(template)
+  return resolveApiAssetUrl(template.cover_url) || resolveApiAssetUrl(template.preview_url) || LOCAL_PREVIEW_ASSETS[id] || ''
 }
 
 function formatPrice(template) {
@@ -115,7 +115,9 @@ function toTemplateViewModel(template, index = 0) {
     alias: Array.isArray(template.alias) ? template.alias : [],
     tags: Array.isArray(template.tags) ? template.tags : [],
     previewSrc: resolvePreviewSrc(template),
-    remotePreviewSrc: template.preview_url ? `${API_BASE_URL}${template.preview_url}` : '',
+    coverSrc: resolveCoverSrc(template),
+    remotePreviewSrc: resolveApiAssetUrl(template.preview_url),
+    remoteCoverSrc: resolveApiAssetUrl(template.cover_url),
     localPreviewSrc: LOCAL_PREVIEW_ASSETS[id] || '',
     maxImages: Number(template.max_images || template.maxImages || 1),
     isCustom: Boolean(template.is_custom || template.isCustom),

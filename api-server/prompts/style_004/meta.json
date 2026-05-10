@@ -1,0 +1,20 @@
+{
+    "id":  "style_004",
+    "name":  "卧室镜前自拍人像",
+    "name_en":  "卧室镜前自拍人像",
+    "description":  "上传 1 张图片，生成「卧室镜前自拍人像」效果。",
+    "description_en":  "Upload 1 reference image to generate the 卧室镜前自拍人像 effect.",
+    "order":  76,
+    "click_count":  0,
+    "is_active":  true,
+    "is_featured":  false,
+    "max_images":  1,
+    "tags":  [
+                 "playing-method",
+                 "style"
+             ],
+    "alias":  [
+                  "卧室镜前自拍人像",
+                  "style_004"
+              ]
+}
